@@ -1,15 +1,19 @@
 fileName = 'Dag 10 koper 4';                % File name.
 v = VideoReader([fileName,'.mov']);    
-startTime = 16;                             % Start time in seconds.
+startTime = 0;                              % Start time in seconds.
 stopTime = floor(v.Duration);               % Stop time in seconds.
-bounds = [490 720];                         % Region bounds, where lines are situated.
+%bounds = [490 720];                         % Region bounds, where lines are situated.
 thresholdL = 120;                           % Threshold for motion detection.
-startH = 240;                               % Line just under water surface to eliminate waves.
+%startH = 240;                               % Line just under water surface to eliminate waves.
 maxSpeed = 20;                              % Max speed in pixels/frame, otherwise error in detecttion.
 verboseIm = 0;                              % Display images.
 verboseTx = 1;                              % Display text.
-drawLines = 1;                              % Draw zone boundaries.
+drawLines = 0;                              % Draw zone boundaries.
 nbFramesRegionSwitch = 20;                  % Number of frames needed to count for a region switch.
+
+%User defines bounds:
+[bounds] = defineBounds(v);                 % User clicks bounds.
+startH = round(bounds(1,1));                % Take rightmost water surface point.
 
 v.CurrentTime = startTime;
 prev = rgb2gray(v.readFrame());
@@ -93,12 +97,12 @@ while (v.CurrentTime <= stopTime)
     
     px = round(poss(i,1));
     py = round(poss(i,2));
-    if (px > bounds(2))
+    if (px > bounds(1,3)+bounds(2,3)*py)
        parts(3) = parts(3) + 1;
        regions(i) = 3;
        prevPart = 3;
     else
-        if (px > bounds(1))
+        if (px > bounds(1,2)+bounds(2,2)*py)
             parts(2) = parts(2) + 1;
             regions(i) = 2;
             prevPart = 2;
@@ -160,11 +164,7 @@ while (v.CurrentTime <= stopTime)
     end
     
     if (drawLines)
-        for w = 1 : v.Width
-           frame(bounds(1),w,:) = [0,0,255];
-           frame(bounds(2),w,:) = [0,0,255];
-           frame(startH,w,:) = [0,255,0];
-        end
+        frame = drawBounds(frame, bounds);
     end
     
     if (verboseIm)
@@ -211,7 +211,7 @@ if (exist('fishData.csv', 'file'))
     Z = cell(size(A,1)+2,15);
     index = size(A,1)+2;
     for iii = 1 : size(A,1)
-        for jjj = 1 : 12
+        for jjj = 1 : 15
             Z{iii+1,jjj} = A{iii,jjj};
         end
     end
@@ -295,9 +295,12 @@ function [a] = fixedLength(num, len)
         a = a(1:len);
     else
        if (length(a) < len)
-           for iii = 1 : len-length(a)
-               a = [a, '0'];
+           b = zeros(1, len);
+           b(1:length(a)) = a;
+           for iii = length(a)+1 : len
+               b(iii) = '0';
            end
+           a = b;
        end
     end
 end
@@ -318,8 +321,10 @@ function [] = drawRegions(regions, frameRate, fileName)
             end
         end
     end
+    figure;
     AX = axes;
-    imshow(B,'InitialMagnification',10);
+    %imshow(B,'InitialMagnification',10);
+    imshow(B, 'InitialMagnification', 100000/length(regions));
     oldTick = get(AX,'XTick');
     newTickStr = cellstr(num2str(oldTick'/frameRate));
     set(AX,'XTickLabel',newTickStr);
@@ -328,4 +333,29 @@ function [] = drawRegions(regions, frameRate, fileName)
     set(AX,'YTick',[round(round(round(length(regions)/10)/3)/2), round(round(round(length(regions)/10)/3)/2)+round(round(length(regions)/10)/3), round(round(round(length(regions)/10)/3)/2)+2*round(round(length(regions)/10)/3)]);
     xlabel('Time [seconds]','FontSize',11);
     saveas(AX, [fileName, '_regions.png']);
+end
+
+function [bounds] = defineBounds(v)
+    v.CurrentTime = round(v.Duration/2);
+    frame = v.readFrame();
+    f = figure;
+    imshow(frame,'InitialMagnification',60);
+    fprintf('Click the points on the image in this order:\n\tWater bound left\n\tWater bound right\n\tZone up-middle bound left\n\tZone up-middle bound right\n\tZone middle-bottom bound left\n\tZone middle-bottom bound right\n');
+    [x, y] = ginput(6);
+    close(f);
+    a1 = (y(1)-y(2))/(x(1)-x(2));
+    a2 = (y(3)-y(4))/(x(3)-x(4));
+    a3 = (y(5)-y(6))/(x(5)-x(6));
+    y1 = y(2) - x(2)*a1;
+    y2 = y(4) - x(4)*a1;
+    y3 = y(6) - x(6)*a1;
+    bounds = [y1, y2, y3; a1, a2, a3];
+end
+
+function [f] = drawBounds(f, bounds)
+    for i = 1 : size(f,2)
+       f(round(bounds(1,1)+bounds(2,1)*(i-1)),i,:) = [0, 255, 0];
+       f(round(bounds(1,2)+bounds(2,2)*(i-1)),i,:) = [0, 0, 255];
+       f(round(bounds(1,3)+bounds(2,3)*(i-1)),i,:) = [0, 0, 255];
+    end
 end

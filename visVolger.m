@@ -1,14 +1,14 @@
-fileName = 'Dag 10 koper 4';                % File name.
+fileName = 'Dag 10 koper 2';                % File name.
 v = VideoReader([fileName,'.mov']);    
-startTime = 0;                              % Start time in seconds.
+startTime = 350;                              % Start time in seconds.
 stopTime = floor(v.Duration);               % Stop time in seconds.
 %bounds = [490 720];                         % Region bounds, where lines are situated.
 thresholdL = 120;                           % Threshold for motion detection.
 %startH = 240;                               % Line just under water surface to eliminate waves.
 maxSpeed = 20;                              % Max speed in pixels/frame, otherwise error in detecttion.
-verboseIm = 0;                              % Display images.
+verboseIm = 1;                              % Display images.
 verboseTx = 1;                              % Display text.
-drawLines = 0;                              % Draw zone boundaries.
+drawLines = 1;                              % Draw zone boundaries.
 nbFramesRegionSwitch = 20;                  % Number of frames needed to count for a region switch.
 
 %User defines bounds:
@@ -285,6 +285,7 @@ for ss = 1 : nbFrames
         end
     end
 end
+frame = drawBounds(frame, bounds);
 imwrite(frame,[fileName,'_path.png']);
 drawRegions(filteredRegions, v.FrameRate, fileName);
 

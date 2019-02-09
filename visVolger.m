@@ -1,14 +1,15 @@
-fileName = 'Dag 10 koper 2';                % File name.
+fileName = 'Dag 0 kopercue 10';             % File name.
 v = VideoReader([fileName,'.mov']);    
-startTime = 350;                              % Start time in seconds.
+startTime = 60;                             % Start time in seconds.
 stopTime = floor(v.Duration);               % Stop time in seconds.
-%bounds = [490 720];                         % Region bounds, where lines are situated.
+%bounds = [490 720];                        % Region bounds, where lines are situated.
 thresholdL = 120;                           % Threshold for motion detection.
-%startH = 240;                               % Line just under water surface to eliminate waves.
-maxSpeed = 20;                              % Max speed in pixels/frame, otherwise error in detecttion.
-verboseIm = 1;                              % Display images.
+numberCnts = 10;                            % Number of consecutive frames a motion has to be detected.
+%startH = 240;                              % Line just under water surface to eliminate waves.
+maxSpeed = 20;                              % Max speed in pixels/frame, otherwise error in detection.
+verboseIm = 0;                              % Display images.
 verboseTx = 1;                              % Display text.
-drawLines = 1;                              % Draw zone boundaries.
+drawLines = 0;                              % Draw zone boundaries.
 nbFramesRegionSwitch = 20;                  % Number of frames needed to count for a region switch.
 
 %User defines bounds:
@@ -26,6 +27,7 @@ timeStill = zeros(3,1);                     % Contains frames where no detection
 regions = zeros(nbFrames,1);                % Contains regions.
 filteredRegions = zeros(nbFrames,1);        % Contains filtered regions.
 entries = zeros(3);
+cnts = zeros(numberCnts, 1);                % Contains consecutive different pixel counts.
 
 % fig1 = figure;
 % hAxes1 = gca;
@@ -58,7 +60,7 @@ while (v.CurrentTime <= stopTime)
     cur = rgb2gray(frame);
     diff = abs(cur-prev);
     diffF = diff(startH:v.Height,:).*sign(floor(diff(startH:v.Height,:)/thresholdL));
-    %set(h1,'CData',diff);
+    %sset(h1,'CData',diff);
     posX = 0;
     posY = 0;
     cnt = 0;
@@ -73,8 +75,15 @@ while (v.CurrentTime <= stopTime)
     end
     posX = posX/cnt;
     posY = posY/cnt;
-    poss(i,:) = [posX posY];
     
+    % Check if enough consecutive movements.
+    cnts = [cnt; cnts(1:numberCnts-1)];
+    if (sum(1-sign(cnts)) > 2)
+        posX = NaN;
+        posY = NaN;
+    end
+    
+    poss(i,:) = [posX posY];
     standStill = 0;
     if (isnan(posX) || isnan(posY))% || sqrt((prevPos(1)-posX)^2+(prevPos(2)-posY)^2) > maxSpeed)
         if (i == 1)
@@ -159,7 +168,11 @@ while (v.CurrentTime <= stopTime)
                 filteredRegions(i-nbFramesRegionSwitch+1) = filteredRegions(i-nbFramesRegionSwitch);
             end
         else
-            filteredRegions(i-nbFramesRegionSwitch+1) = filteredRegions(i-nbFramesRegionSwitch);
+            if (filteredRegions(i-nbFramesRegionSwitch) == 0)
+                filteredRegions(i-nbFramesRegionSwitch+1) = median(regions(i-nbFramesRegionSwitch*2+1:i-nbFramesRegionSwitch-1));
+            else
+                filteredRegions(i-nbFramesRegionSwitch+1) = filteredRegions(i-nbFramesRegionSwitch);
+            end
         end
     end
     
@@ -194,7 +207,7 @@ while (v.CurrentTime <= stopTime)
     a = toc;
     fps = [fps(2:10),a];
     
-    msg = ['Time: ', fixedLength(v.CurrentTime,6), ' FPS: ', fixedLength(1/mean(fps),7), ' Todo: ', fixedLength((nbFrames-i)*mean(fps)/60,4), 'min'];
+    msg = ['Time: ', fixedLength(v.CurrentTime,6), ' FPS: ', fixedLength(1/mean(fps),7), ' Todo: ', fixedLength((nbFrames-i)*mean(fps)/60,4), ' min'];
     fprintf(repmat('\b', 1, n));
     fprintf(msg);
     n=numel(msg);

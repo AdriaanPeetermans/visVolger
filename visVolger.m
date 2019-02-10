@@ -1,4 +1,4 @@
-fileName = 'Dag 10 koper 4';             % File name.
+fileName = 'Dag 0 kopercue 10';             % File name.
 v = VideoReader([fileName,'.mov']);    
 startTime = 60;                             % Start time in seconds.
 stopTime = floor(v.Duration);               % Stop time in seconds.
@@ -208,7 +208,7 @@ while (v.CurrentTime <= stopTime)
     a = toc;
     fps = [fps(2:10),a];
     
-    msg = ['Time: ', fixedLength(v.CurrentTime,6), ' FPS: ', fixedLength(1/mean(fps),7), ' Todo: ', fixedLength((nbFrames-i)*mean(fps)/60,4), ' min', num2str(sum(1-sign(cnts)))];
+    msg = ['Time: ', fixedLength(v.CurrentTime,6), ' FPS: ', fixedLength(1/mean(fps),7), ' Todo: ', fixedLength((nbFrames-i)*mean(fps)/60,4), ' min'];
     fprintf(repmat('\b', 1, n));
     fprintf(msg);
     n=numel(msg);

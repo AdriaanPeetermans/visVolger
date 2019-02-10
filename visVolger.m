@@ -1,16 +1,17 @@
-fileName = 'Dag 0 kopercue 10';             % File name.
+fileName = 'Dag 0 kopercue 10';                     % File name.
 v = VideoReader([fileName,'.mov']);    
-startTime = 60;                             % Start time in seconds.
-stopTime = floor(v.Duration);               % Stop time in seconds.
-%bounds = [490 720];                        % Region bounds, where lines are situated.
-thresholdL = 120;                           % Threshold for motion detection.
-numberCnts = 10;                            % Number of consecutive frames a motion has to be detected.
-%startH = 240;                              % Line just under water surface to eliminate waves.
-maxSpeed = 20;                              % Max speed in pixels/frame, otherwise error in detection.
-verboseIm = 0;                              % Display images.
-verboseTx = 1;                              % Display text.
-drawLines = 0;                              % Draw zone boundaries.
-nbFramesRegionSwitch = 20;                  % Number of frames needed to count for a region switch.
+startTime = 66;                                     % Start time in seconds.
+stopTime = min(floor(v.Duration), 360+startTime);   % Stop time in seconds.
+%bounds = [490 720];                                % Region bounds, where lines are situated.
+thresholdL = 120;                                   % Threshold for motion detection.
+numberCnts = 10;                                    % Number of consecutive frames a motion has to be detected.
+%startH = 240;                                      % Line just under water surface to eliminate waves.
+maxSpeed = 20;                                      % Max speed in pixels/frame, otherwise error in detection.
+verboseIm = 0;                                      % Display images.
+verboseTx = 1;                                      % Display text.
+drawLines = 0;                                      % Draw zone boundaries.
+nbFramesRegionSwitch = 20;                          % Number of frames needed to count for a region switch.
+prevPart = 3;                                       % Zone initialization: lower = 3, middle = 2, upper = 1. 
 
 %User defines bounds:
 [bounds] = defineBounds(v);                 % User clicks bounds.
@@ -41,8 +42,6 @@ if (verboseIm)
     b1 = bar(parts);
     drawnow;
 end
-
-prevPart = 1;
 
 if (verboseTx)
     msg = ['Time: ', num2str(v.CurrentTime)];
@@ -82,6 +81,10 @@ while (v.CurrentTime <= stopTime)
         posX = NaN;
         posY = NaN;
     end
+    if ((posX == 0) && (posY == 0))
+       posX = NaN;
+       posY = NaN;
+    end
     
     poss(i,:) = [posX posY];
     standStill = 0;
@@ -92,7 +95,7 @@ while (v.CurrentTime <= stopTime)
                 disp('First position not found! put it at [0,0], may have effect on next positions.');
                 n = 0;
             end
-            poss(i,:) = [0 0];
+            %poss(i,:) = [0 0];
         else
             poss(i,:) = poss(i-1,:);
             standStill = 1;
@@ -122,8 +125,10 @@ while (v.CurrentTime <= stopTime)
                 regions(i) = 1;
                 prevPart = 1;
             else
-                parts(prevPart) = parts(prevPart) + 1;
-                regions(i) = prevPart;
+                if (prevPart > 0)
+                    parts(prevPart) = parts(prevPart) + 1;
+                    regions(i) = prevPart;
+                end
             end
         end
     end
@@ -208,7 +213,7 @@ while (v.CurrentTime <= stopTime)
     a = toc;
     fps = [fps(2:10),a];
     
-    msg = ['Time: ', fixedLength(v.CurrentTime,6), ' FPS: ', fixedLength(1/mean(fps),7), ' Todo: ', fixedLength((nbFrames-i)*mean(fps)/60,4), ' min'];
+    msg = ['Time: ', fixedLength(v.CurrentTime,6), ' FPS: ', fixedLength(1/mean(fps),7), ' Todo: ', fixedLength((nbFrames-i)*mean(fps)/60,4), ' min', num2str(px), ' ', num2str(py)];
     fprintf(repmat('\b', 1, n));
     fprintf(msg);
     n=numel(msg);

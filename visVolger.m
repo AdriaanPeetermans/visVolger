@@ -1,4 +1,4 @@
-fileName = 'Dag 0 kopercue 10';                     % File name.
+fileName = 'Dag 0 kopercue 6';                     % File name.
 v = VideoReader([fileName,'.mov']);    
 startTime = 60;                                     % Start time in seconds.
 stopTime = min(floor(v.Duration), 360+startTime);   % Stop time in seconds.
@@ -315,6 +315,11 @@ frame = drawBounds(frame, bounds);
 imwrite(frame,[fileName,'_path.png']);
 drawRegions(filteredRegions, v.FrameRate, fileName);
 
+%% Draw certainty:
+figure;
+AX = axes;
+plot(linspace(0,stopTime-startTime,nbFrames), certainty);
+saveas(AX, [fileName, '_certainty.png']);
 
 function [a] = fixedLength(num, len)
     a = num2str(num);
@@ -352,8 +357,10 @@ function [] = drawRegions(regions, frameRate, fileName)
     AX = axes;
     %imshow(B,'InitialMagnification',10);
     imshow(B, 'InitialMagnification', 100000/length(regions));
-    oldTick = get(AX,'XTick');
-    newTickStr = cellstr(num2str(oldTick'/frameRate));
+    ticks = 0 : 10*frameRate : length(regions);
+    set(AX, 'XTick', ticks);
+    %oldTick = get(AX,'XTick');
+    newTickStr = cellstr(num2str(ticks'/frameRate));
     set(AX,'XTickLabel',newTickStr);
     axis on;
     set(AX,'YTickLabel',{'Upper','Middle','Lower'});

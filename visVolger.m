@@ -1,6 +1,6 @@
-fileName = 'Dag 0 kopercue 10';                     % File name.
+fileName = 'Dag 10 koper 4';                     % File name.
 v = VideoReader([fileName,'.mov']);    
-startTime = 66;                                     % Start time in seconds.
+startTime = 60;                                     % Start time in seconds.
 stopTime = min(floor(v.Duration), 360+startTime);   % Stop time in seconds.
 %bounds = [490 720];                                % Region bounds, where lines are situated.
 thresholdL = 120;                                   % Threshold for motion detection.
@@ -111,22 +111,22 @@ while (v.CurrentTime <= stopTime)
     px = round(poss(i,1));
     py = round(poss(i,2));
     if (px > bounds(1,3)+bounds(2,3)*py)
-       parts(3) = parts(3) + 1;
+       %parts(3) = parts(3) + 1;
        regions(i) = 3;
        prevPart = 3;
     else
         if (px > bounds(1,2)+bounds(2,2)*py)
-            parts(2) = parts(2) + 1;
+            %parts(2) = parts(2) + 1;
             regions(i) = 2;
             prevPart = 2;
         else
             if (px > 0)
-                parts(1) = parts(1) + 1;
+                %parts(1) = parts(1) + 1;
                 regions(i) = 1;
                 prevPart = 1;
             else
                 if (prevPart > 0)
-                    parts(prevPart) = parts(prevPart) + 1;
+                    %parts(prevPart) = parts(prevPart) + 1;
                     regions(i) = prevPart;
                 end
             end
@@ -165,11 +165,9 @@ while (v.CurrentTime <= stopTime)
                     end
                 end
                 if (sameRegion)
-                    entries(regions(i),regions(i-nbFramesRegionSwitch)) = entries(regions(i),regions(i-nbFramesRegionSwitch)) + 1;
-                    filteredRegions(i-nbFramesRegionSwitch+1) = regions(i-nbFramesRegionSwitch+1);
-                else
-                    filteredRegions(i-nbFramesRegionSwitch+1) = regions(i-nbFramesRegionSwitch+1);
+                    %entries(regions(i),regions(i-nbFramesRegionSwitch)) = entries(regions(i),regions(i-nbFramesRegionSwitch)) + 1;
                 end
+                filteredRegions(i-nbFramesRegionSwitch+1) = regions(i-nbFramesRegionSwitch+1);
             else
                 filteredRegions(i-nbFramesRegionSwitch+1) = filteredRegions(i-nbFramesRegionSwitch);
             end
@@ -179,6 +177,9 @@ while (v.CurrentTime <= stopTime)
             else
                 filteredRegions(i-nbFramesRegionSwitch+1) = filteredRegions(i-nbFramesRegionSwitch);
             end
+        end
+        if (filteredRegions(i-nbFramesRegionSwitch+1) ~= 0)
+            parts(filteredRegions(i-nbFramesRegionSwitch+1)) = parts(filteredRegions(i-nbFramesRegionSwitch+1)) + 1;
         end
     end
     
@@ -257,6 +258,15 @@ else
     waitTime = 0;
 end
 
+%% Calculate entries:
+for eni = 2 : length(filteredRegions)
+    if ((filteredRegions(eni) ~= 0) && (filteredRegions(eni-1) ~= 0))
+        if (filteredRegions(eni) ~= filteredRegions(eni-1))
+           entries(filteredRegions(eni), filteredRegions(eni-1)) = entries(filteredRegions(eni), filteredRegions(eni-1)) + 1;
+        end
+    end
+end
+
 %% Write data
 %A = cell(2,12);
 A{index,1} = fileName;
@@ -267,13 +277,13 @@ A{index,3} = parts(2)/v.FrameRate/(stopTime - startTime)*100;
 A{1,3} = 'Percentage_in_middle_zone';
 A{index,4} = parts(3)/v.FrameRate/(stopTime - startTime)*100;
 A{1,4} = 'Percentage_in_lower_zone';
-A{index,5} = entries(1,2);
+A{index,5} = entries(1,2) + entries(1,3);
 A{1,5} = 'Shifts_from_middle_to_upper_zone';
-A{index,6} = entries(2,1);
+A{index,6} = entries(2,1) + entries(3,1);
 A{1,6} = 'Shifts_from_upper_to_middle_zone';
-A{index,7} = entries(2,3);
+A{index,7} = entries(2,3) + entries(1,3);
 A{1,7} = 'Shifts_from_lower_to_midle_zone';
-A{index,8} = entries(3,2);
+A{index,8} = entries(3,2) + entries(3,1);
 A{1,8} = 'Shifts_from_middle_to_lower_zone';
 A{index,9} = timeStill(1)/v.FrameRate;
 A{1,9} = 'Seconds_still_in_upper_zone';

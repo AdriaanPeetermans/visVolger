@@ -1,10 +1,11 @@
-fileName = 'Dag 10 koper 4';                     % File name.
+fileName = 'Dag 0 kopercue 10';                     % File name.
 v = VideoReader([fileName,'.mov']);    
 startTime = 60;                                     % Start time in seconds.
 stopTime = min(floor(v.Duration), 360+startTime);   % Stop time in seconds.
 %bounds = [490 720];                                % Region bounds, where lines are situated.
 thresholdL = 120;                                   % Threshold for motion detection.
 numberCnts = 10;                                    % Number of consecutive frames a motion has to be detected.
+numberCntsLong = 100;                               % Number of consecutive frames more than half of the frames need to contain motion to avoid standstill.
 %startH = 240;                                      % Line just under water surface to eliminate waves.
 maxSpeed = 20;                                      % Max speed in pixels/frame, otherwise error in detection.
 verboseIm = 0;                                      % Display images.
@@ -29,6 +30,8 @@ regions = zeros(nbFrames,1);                % Contains regions.
 filteredRegions = zeros(nbFrames,1);        % Contains filtered regions.
 entries = zeros(3);
 cnts = zeros(numberCnts, 1);                % Contains consecutive different pixel counts.
+cntsLong = zeros(numberCntsLong, 1);        % Contains consecutive different pixel counts.
+certainty = zeros(nbFrames,1);              % Contains 1 - relative number of zeros in last numberCntsLong frames.
 
 % fig1 = figure;
 % hAxes1 = gca;
@@ -77,6 +80,8 @@ while (v.CurrentTime <= stopTime)
     
     % Check if enough consecutive movements.
     cnts = [cnt; cnts(1:numberCnts-1)];
+    cntsLong = [cnt; cntsLong(1:numberCntsLong-1)];
+    certainty(i) = sum(sign(cntsLong)) / numberCntsLong;
     if (sum(1-sign(cnts)) > 2)
         posX = NaN;
         posY = NaN;
@@ -111,22 +116,18 @@ while (v.CurrentTime <= stopTime)
     px = round(poss(i,1));
     py = round(poss(i,2));
     if (px > bounds(1,3)+bounds(2,3)*py)
-       %parts(3) = parts(3) + 1;
        regions(i) = 3;
        prevPart = 3;
     else
         if (px > bounds(1,2)+bounds(2,2)*py)
-            %parts(2) = parts(2) + 1;
             regions(i) = 2;
             prevPart = 2;
         else
             if (px > 0)
-                %parts(1) = parts(1) + 1;
                 regions(i) = 1;
                 prevPart = 1;
             else
                 if (prevPart > 0)
-                    %parts(prevPart) = parts(prevPart) + 1;
                     regions(i) = prevPart;
                 end
             end
@@ -156,16 +157,12 @@ while (v.CurrentTime <= stopTime)
             end
             if (sameRegion)
                 %Entry!
-                
                 sameRegion = 1;
                 for ii = i-nbFramesRegionSwitch*2+1 : i-nbFramesRegionSwitch-1
                     if (regions(ii) ~= regions(i-nbFramesRegionSwitch))
                         sameRegion = 0;
                         break;
                     end
-                end
-                if (sameRegion)
-                    %entries(regions(i),regions(i-nbFramesRegionSwitch)) = entries(regions(i),regions(i-nbFramesRegionSwitch)) + 1;
                 end
                 filteredRegions(i-nbFramesRegionSwitch+1) = regions(i-nbFramesRegionSwitch+1);
             else
@@ -214,7 +211,7 @@ while (v.CurrentTime <= stopTime)
     a = toc;
     fps = [fps(2:10),a];
     
-    msg = ['Time: ', fixedLength(v.CurrentTime,6), ' FPS: ', fixedLength(1/mean(fps),7), ' Todo: ', fixedLength((nbFrames-i)*mean(fps)/60,4), ' min', num2str(px), ' ', num2str(py)];
+    msg = ['Time: ', fixedLength(v.CurrentTime,6), ' FPS: ', fixedLength(1/mean(fps),7), ' Todo: ', fixedLength((nbFrames-i)*mean(fps)/60,4), ' min'];
     fprintf(repmat('\b', 1, n));
     fprintf(msg);
     n=numel(msg);

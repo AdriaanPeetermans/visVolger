@@ -1,4 +1,4 @@
-fileName = 'Dag 0 kopercue 6';                     % File name.
+fileName = 'Dag 0 kopercue 10';                     % File name.
 v = VideoReader([fileName,'.mov']);    
 startTime = 60;                                     % Start time in seconds.
 stopTime = min(floor(v.Duration), 360+startTime);   % Stop time in seconds.
@@ -32,6 +32,11 @@ entries = zeros(3);
 cnts = zeros(numberCnts, 1);                % Contains consecutive different pixel counts.
 cntsLong = zeros(numberCntsLong, 1);        % Contains consecutive different pixel counts.
 certainty = zeros(nbFrames,1);              % Contains 1 - relative number of zeros in last numberCntsLong frames.
+
+% region filter parameters:
+minCertainty = 0.5;                     % Minimum certainty level for a switch from/to a long region to be valid.
+longRegionThresh = 10*v.FrameRate;      % Minimum length of a region to be counted as long.
+switchLength = 5*v.FrameRate;          % Length of investigated region around switch to/from long region.
 
 % fig1 = figure;
 % hAxes1 = gca;
@@ -219,9 +224,18 @@ while (v.CurrentTime <= stopTime)
     i = i+1;
 end
 
-%poss = poss(1:i-1,:);
+%% Apply last standstill filter:
+filteredRegions = regionsFilter(filteredRegions, certainty, [minCertainty, longRegionThresh, switchLength]);
 
+%% Recalculate parts:
+parts = zeros(3,1);
+for i = 1 : length(filteredRegions)
+   if (filteredRegions(i) ~= 0)
+      parts(filteredRegions(i)) = parts(filteredRegions(i)) + 1; 
+   end
+end
 
+%% Read existing CSV file:
 if (exist('fishData.csv', 'file'))
     A = readtable('fishData.csv');
     A = table2cell(A);
@@ -391,5 +405,38 @@ function [f] = drawBounds(f, bounds)
        f(round(bounds(1,1)+bounds(2,1)*(i-1)),i,:) = [0, 255, 0];
        f(round(bounds(1,2)+bounds(2,2)*(i-1)),i,:) = [0, 0, 255];
        f(round(bounds(1,3)+bounds(2,3)*(i-1)),i,:) = [0, 0, 255];
+    end
+end
+
+function [newRegions] = regionsFilter(regions, certainty, params)
+    longRegionThresh = params(2);
+    rStart = 1;
+    r = regions(1);
+    newRegions = regions;
+    for i = 2 : length(regions)
+       if (regions(i) ~= r)
+          rLength = i - rStart;
+          if ((rLength >= longRegionThresh) && (rStart ~= 1) && (regions(rStart-1) == regions(i)))
+              cer1 = certainty(max(1,rStart-params(3)):rStart+params(3)-1);
+              cer2 = certainty(i-params(3):min(i+params(3)-1,length(certainty)));
+              if (checkSwitchRegion(cer1, params) && checkSwitchRegion(cer2, params))
+                  newRegions(rStart:i-1) = regions(i);
+              end
+          end
+          rStart = i;
+          r = regions(i);
+       end
+    end
+end
+
+function [flag] = checkSwitchRegion(certainty, params)
+    if (length(certainty) < 2*params(3))
+       flag = 0;
+       return
+    end
+    if (mean(certainty) < params(1))
+       flag = 1;
+    else
+        flag = 0;
     end
 end

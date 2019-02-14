@@ -1,6 +1,6 @@
-fileName = 'Dag 0 kopercue 10';                     % File name.
+fileName = 'Dag 10 controle 1';                     % File name.
 v = VideoReader([fileName,'.mov']);    
-startTime = 60;                                     % Start time in seconds.
+startTime = 20;                                     % Start time in seconds.
 stopTime = min(floor(v.Duration), 360+startTime);   % Stop time in seconds.
 %bounds = [490 720];                                % Region bounds, where lines are situated.
 thresholdL = 120;                                   % Threshold for motion detection.
@@ -8,9 +8,9 @@ numberCnts = 10;                                    % Number of consecutive fram
 numberCntsLong = 100;                               % Number of consecutive frames more than half of the frames need to contain motion to avoid standstill.
 %startH = 240;                                      % Line just under water surface to eliminate waves.
 maxSpeed = 20;                                      % Max speed in pixels/frame, otherwise error in detection.
-verboseIm = 0;                                      % Display images.
+verboseIm = 1;                                      % Display images.
 verboseTx = 1;                                      % Display text.
-drawLines = 0;                                      % Draw zone boundaries.
+drawLines = 1;                                      % Draw zone boundaries.
 nbFramesRegionSwitch = 20;                          % Number of frames needed to count for a region switch.
 prevPart = 3;                                       % Zone initialization: lower = 3, middle = 2, upper = 1. 
 
@@ -395,8 +395,8 @@ function [bounds] = defineBounds(v)
     a2 = (y(3)-y(4))/(x(3)-x(4));
     a3 = (y(5)-y(6))/(x(5)-x(6));
     y1 = y(2) - x(2)*a1;
-    y2 = y(4) - x(4)*a1;
-    y3 = y(6) - x(6)*a1;
+    y2 = y(4) - x(4)*a2;
+    y3 = y(6) - x(6)*a3;
     bounds = [y1, y2, y3; a1, a2, a3];
 end
 

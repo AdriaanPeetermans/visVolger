@@ -1,6 +1,6 @@
-fileName = 'Dag 10 controle 1';                     % File name.
+fileName = 'Dag 0 kopercue 6';                     % File name.
 v = VideoReader([fileName,'.mov']);    
-startTime = 20;                                     % Start time in seconds.
+startTime = 31;                                     % Start time in seconds.
 stopTime = min(floor(v.Duration), 360+startTime);   % Stop time in seconds.
 %bounds = [490 720];                                % Region bounds, where lines are situated.
 thresholdL = 120;                                   % Threshold for motion detection.
@@ -8,9 +8,9 @@ numberCnts = 10;                                    % Number of consecutive fram
 numberCntsLong = 100;                               % Number of consecutive frames more than half of the frames need to contain motion to avoid standstill.
 %startH = 240;                                      % Line just under water surface to eliminate waves.
 maxSpeed = 20;                                      % Max speed in pixels/frame, otherwise error in detection.
-verboseIm = 1;                                      % Display images.
+verboseIm = 0;                                      % Display images.
 verboseTx = 1;                                      % Display text.
-drawLines = 1;                                      % Draw zone boundaries.
+drawLines = 0;                                      % Draw zone boundaries.
 nbFramesRegionSwitch = 20;                          % Number of frames needed to count for a region switch.
 prevPart = 3;                                       % Zone initialization: lower = 3, middle = 2, upper = 1. 
 
@@ -239,16 +239,20 @@ end
 if (exist('fishData.csv', 'file'))
     A = readtable('fishData.csv');
     A = table2cell(A);
-    Z = cell(size(A,1)+2,15);
+    Z = cell(size(A,1)+2,18);
     index = size(A,1)+2;
     for iii = 1 : size(A,1)
-        for jjj = 1 : 15
-            Z{iii+1,jjj} = A{iii,jjj};
+        for jjj = 1 : 18
+            if (jjj > size(A,2))
+                Z{iii+1,jjj} = NaN;
+            else
+                Z{iii+1,jjj} = A{iii,jjj};
+            end
         end
     end
     A = Z;
 else
-    A = cell(2,15);
+    A = cell(2,18);
     index = 2;
 end
 
@@ -278,8 +282,30 @@ for eni = 2 : length(filteredRegions)
     end
 end
 
+%% Calculate standstill in zones:
+regionStill = zeros(3,1);
+for is = 1 : length(filteredRegions)
+   if (filteredRegions(is) ~= 0)
+      if (certainty(is) < minCertainty)
+         regionStill(filteredRegions(is)) = regionStill(filteredRegions(is)) + 1; 
+      end
+   end
+end
+
+%% Calculate distance in each zone:
+regionDist = zeros(3,1);
+for id = 2 : length(filteredRegions)
+    if (filteredRegions(id) ~= 0)
+        if (~isnan(poss(id-1,1)+poss(id-1,2)+poss(id,1)+poss(id,2)))
+            dis = sqrt((poss(id-1,1)-poss(id,1))^2+(poss(id-1,2)-poss(id,2))^2);
+            if (dis <= maxSpeed)
+               regionDist(filteredRegions(id)) = regionDist(filteredRegions(id)) + dis;
+            end
+        end
+    end
+end
+
 %% Write data
-%A = cell(2,12);
 A{index,1} = fileName;
 A{1,1} = 'Filename';
 A{index,2} = parts(1)/v.FrameRate/(stopTime - startTime)*100;
@@ -296,11 +322,11 @@ A{index,7} = entries(2,3) + entries(1,3);
 A{1,7} = 'Shifts_from_lower_to_midle_zone';
 A{index,8} = entries(3,2) + entries(3,1);
 A{1,8} = 'Shifts_from_middle_to_lower_zone';
-A{index,9} = timeStill(1)/v.FrameRate;
+A{index,9} = regionStill(1)/v.FrameRate;
 A{1,9} = 'Seconds_still_in_upper_zone';
-A{index,10} = timeStill(2)/v.FrameRate;
+A{index,10} = regionStill(2)/v.FrameRate;
 A{1,10} = 'Seconds_still_in_middle_zone';
-A{index,11} = timeStill(3)/v.FrameRate;
+A{index,11} = regionStill(3)/v.FrameRate;
 A{1,11} = 'Seconds_still_in_lower_zone';
 A{index,12} = waitTime;
 A{1,12} = 'Seconds_first_in_lower_zone';
@@ -310,6 +336,12 @@ A{index,14} = startTime;
 A{1,14} = 'Start_time_seconds';
 A{index,15} = stopTime;
 A{1,15} = 'Stop_time_seconds';
+A{index,16} = regionDist(1);
+A{1,16} = 'Moved_pixels_in_upper_zone';
+A{index,17} = regionDist(2);
+A{1,17} = 'Moved_pixels_in_middle_zone';
+A{index,18} = regionDist(3);
+A{1,18} = 'Moved_pixels_in_lower_zone';
 T = cell2table(A(2:end,:),'VariableNames',A(1,:));
 writetable(T,'fishData.csv');
 
